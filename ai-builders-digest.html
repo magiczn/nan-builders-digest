@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Builders Digest</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #000;
+            overflow: hidden;
+            touch-action: pan-y;
+            height: 100%;
+        }
+
+        .container {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.2);
+            z-index: 1000;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .card {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease-out;
+            transform: translateY(100%);
+        }
+
+        .card.active { transform: translateY(0); }
+        .card.prev { transform: translateY(-100%); }
+
+        .header {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .header-date {
+            position: absolute;
+            right: 20px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .content {
+            flex: 1;
+            padding: 28px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-top: 40px;
+        }
+
+        .builder-info {
+            margin-bottom: 24px;
+        }
+
+        .builder-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+        }
+
+        .builder-role {
+            font-size: 15px;
+            color: #666;
+        }
+
+        .summary {
+            font-size: 20px;
+            line-height: 1.75;
+            color: #1a1a1a;
+            font-weight: 400;
+            margin-bottom: 20px;
+        }
+
+        .summary-en {
+            font-size: 15px;
+            line-height: 1.65;
+            color: #666;
+            padding-top: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .footer {
+            padding: 16px 20px 30px;
+            background: #fff;
+            border-top: 1px solid #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .source {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .source-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .source-info { min-width: 0; }
+
+        .source-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .source-verified {
+            width: 14px;
+            height: 14px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 8px;
+            font-weight: 700;
+        }
+
+        .source-handle {
+            font-size: 13px;
+            color: #999;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .read-more {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: #f5f5f5;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .read-more svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .swipe-hint {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .swipe-hint.show { opacity: 1; }
+
+        .page-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="header">
+            <span class="header-title">AI Builders Digest</span>
+            <span class="header-date" id="currentDate"></span>
+        </div>
+
+        <div id="cardStack"></div>
+
+        <div class="swipe-hint" id="swipeHint">上滑查看更多</div>
+        <div class="page-indicator" id="pageIndicator">1 / 10</div>
+    </div>
+
+    <script>
+        const buildersData = [
+            {
+                name: "Guillermo Rauch",
+                handle: "rauchg",
+                role: "Vercel CEO",
+                avatar: "GR",
+                summary: "代码只是输出，我们正在回归本质。从崇拜代码本身转向关注真正的输入：需求、规格、用户反馈和实际生产数据。还展示了一个完全用 v0 构建的 3D 叠叠乐游戏，AI 自动加载 R3F 技能进行 3D 开发。",
+                summaryEn: "Code is an output. Nature is healing. We are shifting from glorifying code to focusing on true inputs like requirements, specs, and user feedback.",
+                url: "https://x.com/rauchg/status/2035829366165471702",
+                verified: true
+            },
+            {
+                name: "Aaron Levie",
+                handle: "levie",
+                role: "Box CEO",
+                avatar: "AL",
+                summary: "我们现在仍处于 AI Agent 的早期阶段。类比 2010 年的云计算（当时 AWS 只有 5 亿美元收入），预测 Agent 市场可能从今天早期阶段增长 1000 倍。",
+                summaryEn: "We are so unbelievably early with agents. Comparing to cloud computing in 2010, the agent market could grow 1000x from today's early adoption phase.",
+                url: "https://x.com/levie/status/2035762343502836020",
+                verified: true
+            },
+            {
+                name: "Dan Shipper",
+                handle: "danshipper",
+                role: "Every CEO",
+                avatar: "DS",
+                summary: "提出了 2026 年的新工程团队模型：只需两个人——一个海盗快速 vibe coding 交付功能，一个架构师将发现的产品表面结构化为可靠的系统。",
+                summaryEn: "New engineering team model for 2026: just two people — one pirate who vibes fast to ship features, and one architect who structures the discovered product surface into reliable systems.",
+                url: "https://x.com/danshipper/status/2035842017553465814",
+                verified: true
+            },
+            {
+                name: "Thariq",
+                handle: "trq212",
+                role: "Claude Code @ Anthropic",
+                avatar: "TH",
+                summary: "宣布了 Claude Code 中 /init 的新版本，它会采访用户以帮助设置技能、hooks 和配置。使用 CLAUDE_CODE_NEW_INIT=1 启用。",
+                summaryEn: "Announced a new version of /init in Claude Code that interviews users to help set up skills, hooks, and configurations.",
+                url: "https://x.com/trq212/status/2035799806640115806",
+                verified: true
+            },
+            {
+                name: "Peter Yang",
+                handle: "petergyang",
+                role: "Product @ Roblox",
+                avatar: "PY",
+                summary: "分享了对 Claude Code 和 OpenClaw 作为移动个人助手的个人比较。Claude Code 缺少语音回复和可靠的远程控制，而 OpenClaw 仍有随机遗忘的问题。",
+                summaryEn: "Personal comparison of Claude Code vs OpenClaw as mobile personal assistants. Claude Code lacks voice replies while OpenClaw still has memory issues.",
+                url: "https://x.com/petergyang/status/2035883215840542861",
+                verified: true
+            },
+            {
+                name: "Zara Zhang",
+                handle: "zarazhangrui",
+                role: "Builder",
+                avatar: "ZZ",
+                summary: "发布了 codebase to course —— 一个将任何代码库转换为互动编程课程的技能，包含可视化、通俗英文翻译和测验。AI 时代先构建，后学习。",
+                summaryEn: "Launched codebase to course — a skill that turns any codebase into an interactive coding course with visualization and quizzes. Build first, learn later.",
+                url: "https://x.com/zarazhangrui/status/2035962536474837019",
+                verified: true
+            },
+            {
+                name: "Garry Tan",
+                handle: "garrytan",
+                role: "YC President & CEO",
+                avatar: "GT",
+                summary: "GStack 现已开源免费，集成了 Codex 用于办公时间、CEO 评审、设计评审和工程评审。Claude Code 的 Chrome 侧边栏也即将通过 GStack 推出。",
+                summaryEn: "GStack is now open source and free, with Codex integration for office hours, CEO review, Design Review, and Engineering Review.",
+                url: "https://x.com/garrytan/status/2035941741824729186",
+                verified: true
+            },
+            {
+                name: "Peter Steinberger",
+                handle: "steipete",
+                role: "OpenClaw",
+                avatar: "PS",
+                summary: "报告了测试框架的重大改进——从 10 分钟缩短到 2 分钟——在专注于测试之后。还暗示了即将到来的重大公告。",
+                summaryEn: "Reported major test harness improvements — from 10 minutes down to 2 minutes. Also teased significant upcoming announcements.",
+                url: "https://x.com/steipete/status/2035945773729493466",
+                verified: true
+            },
+            {
+                name: "Swyx",
+                handle: "swyx",
+                role: "DXTips, Cognition",
+                avatar: "SW",
+                summary: "强调企业部署 AI Agent 的顾虑。虽然 Twitter 用户可能使用 dangerously-skip-permissions，但真正的企业需要适当的合规和 IT 控制来为数万名工程师部署。",
+                summaryEn: "Highlighting enterprise deployment concerns for AI agents. Real enterprises need proper compliance and IT controls, not dangerously-skip-permissions.",
+                url: "https://x.com/swyx/status/2035945261265199141",
+                verified: true
+            },
+            {
+                name: "Kevin Weil",
+                handle: "kevinweil",
+                role: "VP Science @ OpenAI",
+                avatar: "KW",
+                summary: "称赞 Neuralink 的最新进展，称这项技术太酷了。科技正在以惊人的速度发展，Neuralink 的突破将为人类带来全新的可能性。",
+                summaryEn: "Praised Neuralink's latest advancement, calling the technology so rad. Technology is advancing at an incredible pace.",
+                url: "https://x.com/kevinweil/status/2035970399742349467",
+                verified: true
+            }
+        ];
+
+        let currentIndex = 0;
+        let startY = 0;
+        let isDragging = false;
+
+        function init() {
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+            renderCards();
+            bindEvents();
+            updateUI();
+        }
+
+        function renderCards() {
+            const stack = document.getElementById('cardStack');
+            stack.innerHTML = buildersData.map((builder, index) => `
+                <div class="card ${index === 0 ? 'active' : ''}" data-index="${index}">
+                    <div class="content">
+                        <div class="builder-info">
+                            <div class="builder-name">${builder.name}</div>
+                            <div class="builder-role">${builder.role}</div>
+                        </div>
+                        <div class="summary">${builder.summary}</div>
+                        <div class="summary-en">${builder.summaryEn}</div>
+                    </div>
+                    <div class="footer">
+                        <div class="source">
+                            <div class="source-avatar">${builder.avatar}</div>
+                            <div class="source-info">
+                                <div class="source-name">
+                                    ${builder.name}
+                                    ${builder.verified ? '<span class="source-verified">V</span>' : ''}
+                                </div>
+                                <div class="source-handle">@${builder.handle}</div>
+                            </div>
+                        </div>
+                        <a href="${builder.url}" target="_blank" class="read-more" onclick="event.stopPropagation()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15,3 21,3 21,9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            阅读原文
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function bindEvents() {
+            const container = document.getElementById('container');
+
+            container.addEventListener('touchstart', handleStart, { passive: true });
+            container.addEventListener('touchmove', handleMove, { passive: false });
+            container.addEventListener('touchend', handleEnd);
+
+            container.addEventListener('mousedown', handleStart);
+            container.addEventListener('mousemove', handleMove);
+            container.addEventListener('mouseup', handleEnd);
+            container.addEventListener('mouseleave', () => isDragging = false);
+
+            let wheelTimeout;
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                clearTimeout(wheelTimeout);
+                wheelTimeout = setTimeout(() => {
+                    goTo(currentIndex + (e.deltaY > 0 ? 1 : -1));
+                }, 100);
+            }, { passive: false });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === ' ') {
+                    e.preventDefault();
+                    goTo(currentIndex + 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    goTo(currentIndex - 1);
+                }
+            });
+        }
+
+        function handleStart(e) {
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            isDragging = true;
+        }
+
+        function handleMove(e) {
+            if (!isDragging) return;
+            if (e.preventDefault) e.preventDefault();
+        }
+
+        function handleEnd(e) {
+            if (!isDragging) return;
+            isDragging = false;
+
+            const endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+            const diff = startY - endY;
+
+            if (Math.abs(diff) > 50) {
+                goTo(currentIndex + (diff > 0 ? 1 : -1));
+            }
+        }
+
+        function goTo(index) {
+            if (index < 0 || index >= buildersData.length) return;
+
+            currentIndex = index;
+
+            document.querySelectorAll('.card').forEach((card, i) => {
+                card.className = 'card';
+                if (i === currentIndex) card.classList.add('active');
+                else if (i < currentIndex) card.classList.add('prev');
+            });
+
+            updateUI();
+
+            if (currentIndex < buildersData.length - 1) {
+                const hint = document.getElementById('swipeHint');
+                hint.classList.add('show');
+                setTimeout(() => hint.classList.remove('show'), 1500);
+            }
+        }
+
+        function updateUI() {
+            const progress = ((currentIndex + 1) / buildersData.length) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('pageIndicator').textContent = `${currentIndex + 1} / ${buildersData.length}`;
+        }
+
+        init();
+    </script>
+</body>
+</html>
